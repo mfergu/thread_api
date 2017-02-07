@@ -54,3 +54,20 @@ The parameter passed to the function indicates which lock is to be locked
 
 ###threadUnlock
 
+this function unlocks the specified lock
+
+the parameter passed is not the lock but rather indicates the number of the lock
+	that should be unlocked
+
+trying to unlock an already unlocked lock should have no effect
+
+###threadWait
+	
+this function automatically unlocks the specified mutex lock and causes the 
+	current thread to block (wait) until the specified condition is signaled
+	by a call to _threadSignal_
+
+the waiting thread unblocks only after another thread calls _threadSignal_
+	with the same lock and condition variable
+
+the mutex must be locked before calling this function
