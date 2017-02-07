@@ -1,31 +1,23 @@
-\__   __/|\     /|(  ____ )(  ____ \(  ___  )(  __  \   (  ___  )(  ____ )\__   __/
-   ) (   | )   ( || (    )|| (    \/| (   ) || (  \  )  | (   ) || (    )|   ) (   
-   | |   | (___) || (____)|| (__    | (___) || |   ) |  | (___) || (____)|   | |   
-   | |   |  ___  ||     __)|  __)   |  ___  || |   | |  |  ___  ||  _____)   | |   
-   | |   | (   ) || (\ (   | (      | (   ) || |   ) |  | (   ) || (         | |   
-   | |   | )   ( || ) \ \__| (____/\| )   ( || (__/  )  | )   ( || )      ___) (___
-   )_(   |/     \||/   \__/(_______/|/     \|(______/   |/     \||/       \_______/
-
 
 #Thread Management
 
-	##threadinit
+##threadinit
 
 	initialize library
 
-	##threadCreate
+##threadCreate
 
 	create a new thread, will have a stack size of STACK_SIZE
 
 	executes the specified function with the arguement ( void * )
 
-	##threadYield
+##threadYield
 
 	causes the current running process to "yield" the processor to the next runnable thread
 
 	saves current thread context and select the next thread for execution
 	
-	##threadJoin
+##threadJoin
 
 	waits until the thread corresponding to id exits
 
@@ -39,7 +31,7 @@
 
 	you do not need to ever free the results ( for this assignment only!)
  
-	##threadExit
+##threadExit
 
 	causes the current thread to exit
 	
@@ -49,7 +41,7 @@
 
 #Sychronization
 
-	##threadLock
+##threadLock
 		
 	This function blocks (waits) until it is able to acquire the specified lock.
 	
@@ -59,4 +51,4 @@
 	The parameter passed to the function indicates which lock is to be locked 
 		This parameter is not the lock itself
 
-	##threadUnlock
+##threadUnlock
