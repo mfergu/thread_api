@@ -4,53 +4,53 @@
 
 ###	threadinit
 
-	initialize library
+initialize library
 
-###	threadCreate
+###threadCreate
 
-	create a new thread, will have a stack size of STACK_SIZE
+create a new thread, will have a stack size of STACK_SIZE
 
-	executes the specified function with the arguement ( void * )
+executes the specified function with the arguement ( void * )
 
-###	threadYield
+###threadYield
 
-	causes the current running process to "yield" the processor to the next runnable thread
+causes the current running process to "yield" the processor to the next runnable thread
 
-	saves current thread context and select the next thread for execution
-	
-###	threadJoin
+saves current thread context and select the next thread for execution
 
-	waits until the thread corresponding to id exits
+###threadJoin
 
-	if results aren't NULL then the thread function's return value is stored as the 
-		address pointed to by result
+waits until the thread corresponding to id exits
 
-	if the thread specified by id has already exited or does not exist then
-		the call should return immediately
+if results aren't NULL then the thread function's return value is stored as the 
+	address pointed to by result
 
-	store the result of all exited threads so you can retreive their results
+if the thread specified by id has already exited or does not exist then
+	the call should return immediately
 
-	you do not need to ever free the results ( for this assignment only!)
- 
-###	threadExit
+store the result of all exited threads so you can retreive their results
 
-	causes the current thread to exit
-	
-	arguement passed to threadExit is the thread's return value which should be passed to
-		any calls to to threadJoin by other threads waiting on this thread
+you do not need to ever free the results ( for this assignment only!)
+
+###threadExit
+
+causes the current thread to exit
+
+arguement passed to threadExit is the thread's return value which should be passed to
+	any calls to to threadJoin by other threads waiting on this thread
 
 
 ##Sychronization
 
-###	threadLock
-		
-	This function blocks (waits) until it is able to acquire the specified lock.
+###threadLock
 	
-	Your library should allow other threads to continue to execute concurrently
-		while one or more threads are waiting for locks
-		
-	The parameter passed to the function indicates which lock is to be locked 
-		This parameter is not the lock itself
+This function blocks (waits) until it is able to acquire the specified lock.
 
-###	threadUnlock
+Your library should allow other threads to continue to execute concurrently
+	while one or more threads are waiting for locks
+	
+The parameter passed to the function indicates which lock is to be locked 
+	This parameter is not the lock itself
+
+###threadUnlock
 
