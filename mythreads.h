@@ -1,35 +1,32 @@
-#define STACK_SIZE (16*1024)
 
-#define NUM_LOCKS 10
+//USER THREAD LIBRARY
+#pragma once
+#include <ucontext.h>
 
-#define CONDITIONS_PER_LOCK 10
+#define STACK_SIZE (16*1024)  
+//max_thread willnot be present in testing header probably should use a linked list
+#define MAX_THREADS 256
+#define NUM_LOCKS 10 
+#define CONDITIONS_PER_LOCK 10 
 
-// the type of function used to run your threads
+//the type of function used to run your threads
+typedef void *(*thFuncPtr) (void *); 
 
-typedef void *(* thFuncPtr ) ( void *) ;
+// thread_t holds pid and stack pointer
+// linked list for thread queue
+extern void threadInit();
 
-extern void threadInit () ;
+extern int threadCreate(thFuncPtr funcPtr, void *argPtr); 
+extern void threadYield(); 
+extern void threadJoin(int thread_id, void **result);
 
-// thread management functions
+//exits the current thread -- closing the main thread, will terminate the program
+extern void threadExit(void *result); 
 
-extern int threadCreate ( thFuncPtr funcPtr , void * argPtr ) ;
+extern void threadLock(int lockNum); 
+extern void threadUnlock(int lockNum); 
+extern void threadWait(int lockNum, int conditionNum); 
+extern void threadSignal(int lockNum, int conditionNum); 
 
-extern void threadYield () ;
-
-extern void threadJoin ( int thread_id , void ** result ) ;
-
-extern void threadExit ( void * result ) ;
-
-// synchronization functions
-
-extern void threadLock ( int lockNum ) ;
-
-extern void threadUnlock ( int lockNum ) ;
-
-extern void threadWait ( int lockNum , int conditionNum ) ;
-
-extern void threadSignal ( int lockNum , int conditionNum ) ;
-
-// control atomicity
-
-extern int interruptsAreDisabled ;
+//this 
+extern int interruptsAreDisabled;
