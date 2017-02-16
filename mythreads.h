@@ -4,8 +4,6 @@
 #include <ucontext.h>
 
 #define STACK_SIZE (16*1024)  
-//max_thread willnot be present in testing header probably should use a linked list
-#define MAX_THREADS 256
 #define NUM_LOCKS 10 
 #define CONDITIONS_PER_LOCK 10 
 

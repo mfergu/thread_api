@@ -1,23 +1,14 @@
 #include "mythreads.h"
 #include "list.h"
 
-// data structure for each user thread
-typedef struct {
-	
-	ucontext_t context;
-	uint8_t active;
-	void* stack;
-
-} thread_t;
-
-//holds each thread in queue
-static thread_t threadList[MAX_THREADS];
+//holds each thread in a queue
+static node_t* threadList;
 
 //number of active threads
-static uint8_t activeThreads;
+static size_t activeThreads;
 
 //index of current thread
-static uint8_t currentThread;
+static size_t currentThread;
 
 //boolean if in main(1) or in thread(0)
 static uint8_t inThread;
@@ -28,20 +19,53 @@ static ucontext_t mainContext;
 extern void threadInit() {
 
 	activeThreads = 0;
-	currentThread = -1;
-	for(int i = 0; i < MAX_THREADS; i++) {
-		threadList[i].active = 0;
-	}
+	currentThread = 0;
+	threadList = NULL;
+	
 }
 
 extern int threadCreate(thFuncPtr funcPtr, void *argPtr) {
 
-	
-}
-extern void threadYield(void) {
-	if( inThread) {	
+	//add new function to the end of the thread list
+	node_t* temp = list_find_numeric(threadList, activeThreads);
+	getcontext( &temp->data->context );
 
-		getcontext( &threadList[currentThread].context, &ogContext);
+	temp->data->context.uc_link = 0;
+	temp->data->stack = malloc( STACK_SIZE);	
+	temp->data->context.uc_stack.ss_sp = temp->data->stack;	
+	temp->data->context.uc_stack.ss_size = STACK_SIZE;
+	temp->data->context.uc_stack.ss_flags = 0;
+
+	if( temp->data->stack == 0) {
+		
+		return;
+	}
+
+	//create context and initialize 
+	makecontext( &temp->data->context, (void (*)(void)) &threadStart, 1, func);
+	++numFibers;
+
+	return 1;
+}
+
+static void threadStart( void (*func)(void)) {
+
+	node_t* temp = list_find_numeric(threadList, currentThread);
+	temp->data->active = 1;
+	func();
+	temp->data->active = 0;
+	threadYield();
+}
+	
+extern void threadYield(void) {
+
+	if( inThread) {	
+		
+		//find the context to switch to in the list
+		node_t* temp = list_find_numeric(threadList, currentThread);
+		
+		getcontext( temp->data->context, &mainContext);
+
 	}
 	else {
 		
@@ -50,11 +74,14 @@ extern void threadYield(void) {
 			return;
 		}
 		
-		currentThread = ( currentThread + 1) % activeThreads;
+		currentThread = currentThread + 1;
 		
 		inThread = 1;
 		
-		swapcontext( &mainContext, &threadList[ currentThread].context);
+		//find the context to switch to in the list
+		node_t* temp = list_find_numeric(threadList, currentThread);
+		
+		swapcontext( &mainContext, temp->context);
 
 		inThread = 0;
 
@@ -66,6 +93,8 @@ extern void threadYield(void) {
 
 			if( currentThread != activeThreads ) {
 				
+				node_t* tempA = list_find_numeric(threadList, currentThread); 	
+				node_t* tempB = list_find_numeric(threadList, activeThread); 	
 				threadList[ currentThread] = threadList[ activeThreads];
 			}
 		
@@ -75,8 +104,11 @@ extern void threadYield(void) {
 	return;
 }
 
+//function pointer for list_find to find the thread number in the threadList
+//given a number and a queue list find
 
 extern void threadJoin(int thread_id, void **result);
+
 
 //exits the current thread -- closing the main thread, will terminate the program
 extern void threadExit(void *result); 

@@ -7,7 +7,7 @@
  * Arguments: The data the list will contain or NULL to create an empty
  * list/node
  */
-node_t* list_create(void *data)
+node_t* list_create(thread_t *data)
 {
 	node_t *l = malloc(sizeof(node_t));
 	if (l != NULL) {
@@ -21,7 +21,7 @@ node_t* list_create(void *data)
 /* Completely destroys a list
  * Arguments: A pointer to a pointer to a list
  */
-void list_destroy(node_t **list)
+thread_t list_destroy(node_t **list)
 {
 	if (list == NULL) return;
 	while (*list != NULL) {
@@ -29,10 +29,21 @@ void list_destroy(node_t **list)
 	}
 }
 
+node_t* list_find_numeric(node_t** head, size_t numberInQueue) {
+
+	node* temp = *head;
+	size_t i = 0;
+	while(i++ < numberInQueue) {
+
+		temp = temp->next;
+	}
+
+	return temp;
+}
 /* Creates a list node and inserts it after the specified node
  * Arguments: A node to insert after and the data the new node will contain
  */
-node_t* list_insert_after(node_t *node, void *data)
+node_t* list_insert_after(node_t *node, thread_t *data)
 {
 	node_t *new_node = list_create(data);
 	if (new_node) {
@@ -46,7 +57,7 @@ node_t* list_insert_after(node_t *node, void *data)
  * Arguments: The list the node will be inserted to and the data the node will
  * contain
  */
-node_t* list_insert_beginning(node_t *list, void *data)
+node_t* list_insert_beginning(node_t *list, thread_t *data)
 {
 	node_t *new_node = list_create(data);
 	if (new_node != NULL) { new_node->next = list; }
@@ -57,7 +68,7 @@ node_t* list_insert_beginning(node_t *list, void *data)
  * Arguments: The list the node will be inserted to and the data the node will
  * contain
  */
-node_t* list_insert_end(node_t *list, void *data)
+node_t* list_insert_end(node_t *list, thread_t *data)
 {
 	node_t *new_node = list_create(data);
 	if (new_node != NULL) {
@@ -74,7 +85,7 @@ node_t* list_insert_end(node_t *list, void *data)
 /* Removes a node from the list
  * Arguments: The list and the node that will be removed
  */
-void list_remove(node_t **list, node_t *node)
+thread_t list_remove(node_t **list, node_t *node)
 {
 	node_t *tmp = NULL;
 	if (list == NULL || *list == NULL || node == NULL) return;
@@ -97,7 +108,7 @@ void list_remove(node_t **list, node_t *node)
 /* Removes an element from a list by comparing the data pointers
  * Arguments: A pointer to a pointer to a list and the pointer to the data
  */
-void list_remove_by_data(node_t **list, void *data)
+thread_t list_remove_by_data(node_t **list, thread_t *data)
 {
 	if (list == NULL || *list == NULL || data == NULL) return;
 	list_remove(list, list_find_by_data(*list, data));
@@ -118,7 +129,7 @@ node_t* list_find_node(node_t *list, node_t *node)
 /* Finds an elemt in a list by the data pointer
  * Arguments: A pointer to a list and a pointer to the data
  */
-node_t* list_find_by_data(node_t *list, void *data)
+node_t* list_find_by_data(node_t *list, thread_t *data)
 {
 	while (list) {
 		if (list->data == data) break;
@@ -131,7 +142,7 @@ node_t* list_find_by_data(node_t *list, void *data)
  * Arguments: A pointer to a list, the comparison function and a pointer to the
  * data
  */
-node_t* list_find(node_t *list, int(*func)(node_t*,void*), void *data)
+node_t* list_find(node_t *list, int(*func)(node_t*,thread_t*), thread_t *data)
 {
 	if (!func) return NULL;
 	while(list) {
@@ -141,3 +152,4 @@ node_t* list_find(node_t *list, int(*func)(node_t*,void*), void *data)
 	return list;
 }
 
+	
