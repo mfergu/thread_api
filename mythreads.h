@@ -12,6 +12,7 @@ typedef void *(*thFuncPtr) (void *);
 
 // thread_t holds pid and stack pointer
 // linked list for thread queue
+// assume supporting preemptive 
 extern void threadInit();
 
 extern int threadCreate(thFuncPtr funcPtr, void *argPtr); 
