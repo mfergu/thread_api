@@ -1,0 +1,3 @@
+http://jacklamberti.com/user_thread_library/
+http://www.evanjones.ca/software/threading.html
+ftp://caliban.physics.utoronto.ca/pub/linux/bb_threads.tar.gz
