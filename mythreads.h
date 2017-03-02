@@ -1,6 +1,4 @@
 
-//USER THREAD LIBRARY
-#pragma once
 #include <ucontext.h>
 
 #define STACK_SIZE (16*1024)  
@@ -10,11 +8,7 @@
 //the type of function used to run your threads
 typedef void *(*thFuncPtr) (void *); 
 
-// thread_t holds pid and stack pointer
-// linked list for thread queue
-// assume supporting preemptive 
 extern void threadInit();
-
 extern int threadCreate(thFuncPtr funcPtr, void *argPtr); 
 extern void threadYield(); 
 extern void threadJoin(int thread_id, void **result);
