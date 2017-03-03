@@ -6,85 +6,46 @@
 #include <usr/include/signal.h>
 #include <sys/time.h>
 
+int locks[NUM_LOCKS];
+int conditions[NUM_LOCKS][CONDITIONS_PER_LOCK];
+
 #define T Thread_T
 typedef struct T {
-	ucontext_t context;
-	T link;
+	ucontext_t context;	/* tcb vars */
+	thFuncPtr function;
+	void* args;
+	void* results;
+	int id;
+	int alerted;
+	int done;
+	T link;	/* list vars */
 	T *inqueue;
 	T handle;
 	T join;
 	T next;
-	int alerted;
-	int done;
 }
 
 static T ready = NULL;
-static T current;
-static int preempt = 1;
-static int nthreads;
+static T current;		/* currently executing thread */
+static int nthreads;	/* number of active threads */
 static T join;
 static T freelist;
 static int critical;
+static ucontext_t mainContext;	/* main process executing */
 
-
-/* queue manipulation functions */
-
-static void put( T thread, T* queue) {
-	assert(t);
-	assert(t->inqueue == NULL && thread->link == NULL);
-	if(*queue) {
-		thread->link = (*queue)->link;
-		(*queue)->link = thread;
-	}
-	else {
-		thread->link = thread;
-	}
-	
-	*queue = thread;
-	thread->inqueue = queue;
+/* from header and is extern */
+static void interruptsAreDisabled() {
+	interruptsAreDisabled = 1;
 }
 
-static T get(T *queue) {
-	T thread;
-	assert( !isempty( *queue));
-	thread = ( *queue)->link;
-	if( thread == *queue) {
-		*queue = NULL;
-	}
-	else {
-		(*queue)->link = thread->link;
-	}
-	assert( thread->inqueue == queue);
-	thread->link = NULL;
-	thread->inqueue = NULL;
-	return thread;
-}
-
-static void delete( T thread, T *queue) {
-	T temp;
-	assert( thread->link && thread->inqueue == q);
-	assert( !isempty(*queue));
-	for( temp = *queue; temp->link != thread; temp = temp->link)
-		;
-	if( temp == thread) {
-		*queue = NULL;
-	}
-	else {
-		temp->link = thread->link;
-		if( *queue == thread) {
-			*queue = temp;
-		}
-	}
-	
-	thread->link = NULL;
-	thread->inqueue = NULL;
+/* from header and is extern */
+static void interruptsAreEnabled() {
+	interruptsAreDisabled = 0;
 }
 
 static void run(void) {
+
 	T thread = current;
-	//from exception.h
-	thread->estack = Except_stack;
-	Except_stack = current->estack;
 	//context switch
 	// put current context into ready queue's 1st element from yield?  
 	getcontext(ready->context);
