@@ -9,7 +9,7 @@
 int locks[NUM_LOCKS];
 int conditions[NUM_LOCKS][CONDITIONS_PER_LOCK];
 
-#define T Thread_T
+#define T thread_t
 typedef struct T {
 	ucontext_t context;	/* tcb vars */
 	thFuncPtr function;
@@ -58,6 +58,7 @@ void threadInit(void) {
 extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptsAreDisabled();
+
 	T* temp =(T*) malloc(sizeof(T));
 	assert( temp != NULL);
 
@@ -66,7 +67,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	assert(context.uc_stack.ss_sp != NULL); 
 	temp->context.uc_stack.ss_size = STACK_SIZE;
 	temp->context.uc_stack.ss_flags = 0;
-	temp->context.uc_link = &head->temp->context;
+	// don't use uc_link in project 2
 	
 	temp->function =  funcPtr;
 	temp->args = argPtr;
@@ -74,7 +75,12 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	temp->complete = 0;
 	makecontext( &temp->context, (void (*)(void)), run, 1, temp); 
 
+	list_insert_end( threadQueue, temp);
+
+	nthreads++;
 	
+	interruptsAreEnabled();
+
 }
 
 static void run(void) {
