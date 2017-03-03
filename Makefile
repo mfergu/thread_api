@@ -1,6 +1,6 @@
 
 CC=clang-3.6
-CFLAGS=-std=c11 -Wall -g -c
+CFLAGS=-Wall -g -c
 
 BINS=mythreads
 
@@ -9,7 +9,7 @@ all: $(BINS)
 %: %.c                                                                                                        
 	$(CC) $(CFLAGS) -o $@ $? -pthread 
 
-mythreads: mythreads.c list.o
+mythreads.a: mythreads.o list.o
 	$(CC) $(CFLAGS) -o $@ mythreads.c list.c
 
 clean: 

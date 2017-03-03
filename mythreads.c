@@ -3,7 +3,7 @@
 #include <ucontext.h>
 #include <stdio.h>
 #include <string.h>
-#include <usr/include/signal.h>
+#include <signal.h>
 #include <sys/time.h>
 
 int locks[NUM_LOCKS];
@@ -18,30 +18,31 @@ typedef struct T {
 	int id;
 	int alerted;
 	int complete;
-}
+}T;
 
 static list_node* threadQueue;
-static T main;
 static int nthreads;	/* number of active threads */
 
 static T* join;
 static T freelist;
 static int critical;
-static T ready = NULL;
+static T* ready = NULL;
 
 /* from header and is extern */
-static void interruptsAreDisabled() {
+static void interruptDisable() {
+	assert(!interruptsAreDisabled);
 	interruptsAreDisabled = 1;
 }
 
 /* from header and is extern */
-static void interruptsAreEnabled() {
+static void interruptEnable() {
+	assert(interruptsAreDisabled);
 	interruptsAreDisabled = 0;
 }
 
 void threadInit(void) {
 
-	main = malloc(sizeof(T));
+	T* main = (T*) malloc(sizeof(T));
 	assert( main != NULL);
 
 	assert(getcontext(&main->context) != -1);
@@ -55,16 +56,27 @@ void threadInit(void) {
 
 }
 
+static void run(T* temp) {
+
+/*
+	T thread = current;
+	//context switch
+	// put current context into ready queue's 1st element from yield?  
+	getcontext(ready->context);
+	setcontext(&thread.context);
+*/
+}	
+
 extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
-	interruptsAreDisabled();
+	interruptDisable();
 
 	T* temp =(T*) malloc(sizeof(T));
 	assert( temp != NULL);
 
 	assert( getcontext( &temp->context) != -1);	
 	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
-	assert(context.uc_stack.ss_sp != NULL); 
+	assert(temp->context.uc_stack.ss_sp != NULL); 
 	temp->context.uc_stack.ss_size = STACK_SIZE;
 	temp->context.uc_stack.ss_flags = 0;
 	// don't use uc_link in project 2
@@ -73,7 +85,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	temp->args = argPtr;
 	temp->id = (int) sys_gettid();
 	temp->complete = 0;
-	makecontext( &temp->context, (void (*)(void)), run, 1, temp); 
+	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
 
 	list_insert_end( threadQueue, temp);
 
@@ -83,22 +95,19 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 }
 
-static void run(void) {
 
-	T thread = current;
-	//context switch
-	// put current context into ready queue's 1st element from yield?  
-	getcontext(ready->context);
-	setcontext(&thread.context);
-}	
 
+
+/*
 static void testalert(void) {
 	if(current->alerted) {
 		current->alerted = 0;
 		RAISE(Thread_Alerted);
 	}
 }
+*/
 
+/*
 static void release(void) {
 	T thread;
 	do {
@@ -110,7 +119,9 @@ static void release(void) {
 		critical--;
 	} while(0);
 }
+*/
 
+/*
 static int interrupt( int sig, struct sigcontext sc) {
 	if( critical || sc.rip >= (unsigned long)_MONITOR &&
 		sc.rip <= (unsigned long)_ENDMONITOR) {
@@ -126,7 +137,9 @@ static int interrupt( int sig, struct sigcontext sc) {
 	run();
 	return 0;
 }
+*/
 
+/*
 int ThreadInit(void) {
 	assert( preempt == 1 || preempt == 0);
 	assert( current == NULL);	
@@ -155,18 +168,24 @@ int ThreadInit(void) {
 	}
 	return 1;
 }	
+*/
 
+/*
 T Thread_self(void) {
 	assert(current);
 	return current;
 }
+*/
 
+/*
 void ThreadYield(void) {
 	assert(current);
 	put(current, &ready);
 	run();
 }
+*/
 
+/*
 int ThreadJoin( T thread) {
 	assert( current && thread != current);
 	testalert();
@@ -191,7 +210,9 @@ int ThreadJoin( T thread) {
 		return 0;
 	}
 }
+*/
 
+/*
 void ThreadExit( int code) {
 	assert( current);
 	release();
@@ -217,27 +238,7 @@ void ThreadExit( int code) {
 	}	
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-void _ENDMONITOR(void) {}
-
-
-
-
-
-
-
-
+*/
 
 
 
