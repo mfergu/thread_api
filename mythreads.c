@@ -16,6 +16,7 @@ typedef struct T {
 	void* args;
 	void* results;
 	int id;
+	int active;
 	int alerted;
 	int complete;
 }T;
@@ -47,6 +48,7 @@ void threadInit(void) {
 
 	assert(getcontext(&main->context) != -1);
 	main->id = 1;	
+	main->active = 1;
 	main->alerted = 0;
 	main->complete = 0;
 	nthreads = 1;
@@ -58,13 +60,12 @@ void threadInit(void) {
 
 static void run(T* temp) {
 
-/*
-	T thread = current;
-	//context switch
-	// put current context into ready queue's 1st element from yield?  
-	getcontext(ready->context);
-	setcontext(&thread.context);
-*/
+	//needs review for yielding and variable semantics
+	temp->active = 1;
+	temp->results = temp->function( temp->args);
+	temp->done = 1;
+	temp->active = 0;
+	threadYield();
 }	
 
 extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
@@ -95,8 +96,21 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 }
 
+extern void threadJoin( int thread_id, void **result) {
 
+}
 
+extern void threadYield(void) {
+
+	interruptDisable();
+	
+	//if in a thread switch to main	
+	
+	//if in main switch to a thread
+
+	interruptEnable();
+
+}
 
 /*
 static void testalert(void) {
