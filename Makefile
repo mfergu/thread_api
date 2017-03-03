@@ -1,5 +1,5 @@
 
-CC=clang
+CC=clang-3.6
 CFLAGS=-std=c11 -Wall -g -c
 
 BINS=mythreads
