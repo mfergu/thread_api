@@ -1,0 +1,3 @@
+clang -std=c11 -Wall -g -c   -c -o list.o list.c
+make: clang: Command not found
+make: *** [list.o] Error 127

@@ -1,28 +1,21 @@
 #include "mythreads.h"
+#include "list.h"
 #include <ucontext.h>
 #include <stdio.h>
 #include <string.h>
 #include <usr/include/signal.h>
 #include <sys/time.h>
-#include "assert.h"
-#include "mem.h"
-#include "sem.h"
-
-void _MONITOR(void) {}
 
 #define T Thread_T
-#define isempty(q) ((q) == NULL)
-
-struct T {
+typedef struct T {
 	ucontext_t context;
 	T link;
 	T *inqueue;
 	T handle;
-	Except_Frame *estack;
-	int code;
 	T join;
 	T next;
 	int alerted;
+	int done;
 }
 
 static T ready = NULL;
@@ -31,8 +24,6 @@ static int preempt = 1;
 static int nthreads;
 static T join;
 static T freelist;
-const Except_T Thread_Alerted = { "Thread Alerted" };
-const Except_T Thread_Failed = { "Thread creation failed"};
 static int critical;
 
 

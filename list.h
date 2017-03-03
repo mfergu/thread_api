@@ -1,16 +1,6 @@
 // modified from https://github.com/dxtr/list 
 #pragma once 
 
-//data structure to hold thread information
-typedef struct {                                                                                              
-                                                                                                              
-    ucontext_t context; //stores current context                                           
-    uint8_t active; //active flag                                                      
-    void* stack; //                                                                                              
-} thread_t;  
-
-
-//data structure to represent queue
 typedef struct node_t {
 
 	struct thread_t *data;
