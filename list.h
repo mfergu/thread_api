@@ -1,23 +1,23 @@
-// modified from https://github.com/dxtr/list 
-#pragma once 
+/* list pulled from https://github.com/dxtr/list */
+#ifndef _LIST_H
+#define _LIST_H
 
-typedef struct node_t {
+typedef struct list_node {
+	void *data;
+	struct list_node *next;
+} list_node;
 
-	struct thread_t *data;
-	struct node_t *next;
-} node_t;
+/* linked list */
+list_node* list_create(void *data);
+void list_destroy(list_node **list);
+list_node* list_insert_after(list_node *node, void *data);
+list_node* list_insert_beginning(list_node *list, void *data);
+list_node* list_insert_end(list_node *list, void *data);
+void list_remove(list_node **list, list_node *node);
+void list_remove_by_data(list_node **list, void *data);
+list_node* list_find_node(list_node *list, list_node *node);
+list_node* list_find_by_data(list_node *list, void *data);
+list_node* list_find(list_node *list, int(*func)(list_node*,void*), void *data);
 
-//linked list
-node_t* list_find_numeric(node_t** head, size_t numberInQueue);
-node_t* list_create(thread_t *data);
-thread_t list_destroy(node_t **list);
-node_t* list_insert_after(node_t *node, thread_t *data);
-node_t* list_insert_beginning(node_t *list, thread_t *data);
-node_t* list_insert_end(node_t *list, thread_t *data);
-thread_t list_remove(node_t **list, node_t *node);
-thread_t list_remove_by_data(node_t **list, thread_t *data);
-node_t* list_find_node(node_t *list, node_t *node);
-node_t* list_find_by_data(node_t *list, thread_t *data);
-node_t* list_find(node_t *list, int(*func)(node_t*,thread_t*), thread_t *data);
-
+#endif
 

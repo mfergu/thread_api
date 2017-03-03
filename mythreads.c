@@ -18,22 +18,16 @@ typedef struct T {
 	int id;
 	int alerted;
 	int complete;
-	T* link;	/* list vars */
-	T* inqueue;
-	T* handle;
-	T* join;
-	T* next;
 }
 
-T* head, * tail, * current;
-static T ready = NULL;
-static T current;		/* currently executing thread */
+static list_node* threadQueue;
+static T main;
 static int nthreads;	/* number of active threads */
-static T join;
+
+static T* join;
 static T freelist;
 static int critical;
-static ucontext_t mainContext;	/* main process executing */
-static T main;
+static T ready = NULL;
 
 /* from header and is extern */
 static void interruptsAreDisabled() {
@@ -50,13 +44,14 @@ void threadInit(void) {
 	main = malloc(sizeof(T));
 	assert( main != NULL);
 
-	getcontext(&main->context);
-	main->id = 0;	
+	assert(getcontext(&main->context) != -1);
+	main->id = 1;	
+	main->alerted = 0;
 	main->complete = 0;
 	nthreads = 1;
 
-	head = main;
-	main->next = main;
+	threadQueue = list_create(main);
+	assert( threadQueue != NULL);
 
 }
 
@@ -66,11 +61,9 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	T* temp =(T*) malloc(sizeof(T));
 	assert( temp != NULL);
 
-	temp->handle = temp;
-	getcontext( &temp->context);	
+	assert( getcontext( &temp->context) != -1);	
 	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
 	assert(context.uc_stack.ss_sp != NULL); 
-
 	temp->context.uc_stack.ss_size = STACK_SIZE;
 	temp->context.uc_stack.ss_flags = 0;
 	temp->context.uc_link = &head->temp->context;
@@ -79,6 +72,9 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	temp->args = argPtr;
 	temp->id = (int) sys_gettid();
 	temp->complete = 0;
+	makecontext( &temp->context, (void (*)(void)), run, 1, temp); 
+
+	
 }
 
 static void run(void) {
