@@ -1,33 +1,25 @@
-clang-3.6 -Wall -g -c -o mythreads mythreads.c -pthread 
-mythreads.c:33:2: warning: implicit declaration of function 'assert' is invalid in C99 [-Wimplicit-function-declaration]
-        assert(!interruptsAreDisabled);
-        ^
-mythreads.c:45:17: warning: implicitly declaring library function 'malloc' with type 'void *(unsigned long)'
+clang-3.6 -Wall -g -c   -c -o mythreads.o mythreads.c
+mythreads.c:54:17: warning: implicitly declaring library function 'malloc' with type 'void *(unsigned long)'
         T* main = (T*) malloc(sizeof(T));
                        ^
-mythreads.c:45:17: note: include the header <stdlib.h> or explicitly provide a declaration for 'malloc'
-mythreads.c:86:19: warning: implicit declaration of function 'sys_gettid' is invalid in C99 [-Wimplicit-function-declaration]
-        temp->id = (int) sys_gettid();
-                         ^
-mythreads.c:94:2: warning: implicit declaration of function 'interruptsAreEnabled' is invalid in C99 [-Wimplicit-function-declaration]
-        interruptsAreEnabled();
-        ^
-mythreads.c:96:1: warning: control reaches end of non-void function [-Wreturn-type]
+mythreads.c:54:17: note: include the header <stdlib.h> or explicitly provide a declaration for 'malloc'
+mythreads.c:105:1: warning: control may reach end of non-void function [-Wreturn-type]
 }
 ^
-mythreads.c:26:11: warning: unused variable 'join' [-Wunused-variable]
+mythreads.c:35:11: warning: unused variable 'join' [-Wunused-variable]
 static T* join;
           ^
-mythreads.c:27:10: warning: unused variable 'freelist' [-Wunused-variable]
+mythreads.c:36:10: warning: unused variable 'freelist' [-Wunused-variable]
 static T freelist;
          ^
-mythreads.c:28:12: warning: unused variable 'critical' [-Wunused-variable]
+mythreads.c:37:12: warning: unused variable 'critical' [-Wunused-variable]
 static int critical;
            ^
-mythreads.c:29:11: warning: unused variable 'ready' [-Wunused-variable]
+mythreads.c:38:11: warning: unused variable 'ready' [-Wunused-variable]
 static T* ready = NULL;
           ^
-mythreads.c:38:13: warning: unused function 'interruptEnable' [-Wunused-function]
-static void interruptEnable() {
-            ^
-10 warnings generated.
+6 warnings generated.
+clang-3.6 -Wall -g -c   -c -o list.o list.c
+ar -cvr libmythreads.a mythreads.o list.o
+a - mythreads.o
+a - list.o
