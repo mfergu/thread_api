@@ -2,15 +2,15 @@
 CC=clang-3.6
 CFLAGS=-Wall -g -c
 
-BINS=mythreads
+BINS=libmythreads.a
 
 all: $(BINS)
 
 %: %.c                                                                                                        
 	$(CC) $(CFLAGS) -o $@ $? -pthread 
 
-mythreads.a: mythreads.o list.o
-	$(CC) $(CFLAGS) -o $@ mythreads.c list.c
+libmythreads.a: mythreads.o list.o
+	ar -cvr libmythreads.a mythreads.o list.o
 
 clean: 
 	rm -rf $(BINS) *.o *.dSYM

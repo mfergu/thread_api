@@ -6,6 +6,7 @@
 
 
 
+	int interruptsAreDisabled;
 
 void *t1 (void *arg)
 {

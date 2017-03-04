@@ -1,10 +1,18 @@
 #include "mythreads.h"
 #include "list.h"
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 #include <ucontext.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <assert.h>
 #include <sys/time.h>
+
+#ifndef gettid
+#define gettid() syscall(SYS_gettid)
+#endif
 
 int locks[NUM_LOCKS];
 int conditions[NUM_LOCKS][CONDITIONS_PER_LOCK];
@@ -15,7 +23,7 @@ typedef struct T {
 	thFuncPtr function;
 	void* args;
 	void* results;
-	int id;
+	size_t id;
 	int active;
 	int alerted;
 	int complete;
@@ -63,7 +71,7 @@ static void run(T* temp) {
 	//needs review for yielding and variable semantics
 	temp->active = 1;
 	temp->results = temp->function( temp->args);
-	temp->done = 1;
+	temp->complete = 1;
 	temp->active = 0;
 	threadYield();
 }	
@@ -84,7 +92,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	
 	temp->function =  funcPtr;
 	temp->args = argPtr;
-	temp->id = (int) sys_gettid();
+	temp->id = (size_t) gettid();
 	temp->complete = 0;
 	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
 
@@ -92,7 +100,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	nthreads++;
 	
-	interruptsAreEnabled();
+	interruptEnable();
 
 }
 
