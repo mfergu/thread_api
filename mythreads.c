@@ -29,7 +29,7 @@ typedef struct T {
 	int complete;   /*		finished executing */
 }T;
 
-static list_node* front, * current;
+static list_node* front, * running;
 static int nthreads;	/* number of active threads */
 
 static T* join;
@@ -50,6 +50,10 @@ static void interruptEnable() {
 }
 
 void threadInit(void) {
+/*  If this is the first time a thread is being created
+ *		we want to initialize the library
+ *		which also means assigning the parent thread as a running thread
+ */
 
 	T* main = (T*) malloc(sizeof(T));
 	assert( main != NULL);
@@ -61,7 +65,8 @@ void threadInit(void) {
 	main->complete = 0;
 	nthreads = 1;
 
-	threadQueue = list_create(main);
+	running = list_create(main);
+	front = running;
 	assert( threadQueue != NULL);
 
 }
@@ -76,15 +81,9 @@ static void run(T* temp) {
 	threadYield();
 }	
 
-/*  malloc the thread struct
- *  set the context to a wrapper function 
- *  which will pass the arguments into the start routine
- *  Then we push this onto the TCB
- *  If this is the first time a thread is being created
- *		we want to initialize the library
- *		which also means assigning the parent thread as a running thread
- *	We want the parent thread to know the id of the thread it created,
- *		so we pass it back through the pthread_t* thread argument
+/* descrepancy for threadCreate return
+ *   needs to return thread id to parent 
+ *   also needs to 
  *	if all of the above is successful
  *		return 0 otherwise we want to return a nonzero value
  */
@@ -92,10 +91,15 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptDisable();
 
+ //  malloc the thread struct
 	T* temp =(T*) malloc(sizeof(T));
 	assert( temp != NULL);
 
+ //  set the context to a wrapper function 
+ //  which will pass the arguments into the start routine
 	assert( getcontext( &temp->context) != -1);	
+
+ //  Then we push this onto the TCB
 	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
 	assert(temp->context.uc_stack.ss_sp != NULL); 
 	temp->context.uc_stack.ss_size = STACK_SIZE;
@@ -118,7 +122,14 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	nthreads++;
 	
+/*	We want the parent thread to know the id of the thread it created,
+ *		so we pass it back through the pthread_t* thread argument
+ */
+	size_t id_val = temp->id;
+
 	interruptEnable();
+
+	return id_val;
 
 }
 
@@ -147,6 +158,14 @@ extern void threadJoin( int thread_id, void **result) {
 	list_node temp = ;
 }
 
+/*
+ * When a thread joins
+ *		it needs to give up the CPU for the other threads
+ *	 yield function just needs to
+ *	 push the running thread back into the linked list
+ *	 then get the next runnable thread
+ *		and perform a context switch
+ */
 extern void threadYield(void) {
 
 	interruptDisable();
@@ -157,6 +176,27 @@ extern void threadYield(void) {
 
 	interruptEnable();
 
+}
+
+
+/* 
+ * an existing thread should call the exit function
+ * in the user level thread library
+ * but we still should handle the case when it doesn’t
+ * The exit function needs to accept a void* which enables the user thread
+ *		to pass information back to the thread that joined on it
+ *	then perform a cleanup routine on joined threads	 
+ */
+extern void threadExit( void *result) {
+
+	
+}
+
+/*
+ * grab the thread id from the Thread struct and return it
+ */
+T Thread_self(void) {
+	return running;
 }
 
 /*
@@ -232,10 +272,6 @@ int ThreadInit(void) {
 */
 
 /*
-T Thread_self(void) {
-	assert(current);
-	return current;
-}
 */
 
 /*
