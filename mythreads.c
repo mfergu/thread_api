@@ -66,16 +66,17 @@ void threadInit(void) {
 	nthreads = 1;
 
 	running = list_create(main);
+	assert( running != NULL);
 	front = running;
-	assert( threadQueue != NULL);
-
 }
 
 static void run(T* temp) {
 
 	//needs review for yielding and variable semantics
 	temp->active = 1;
+	temp->blocked = 0;
 	temp->results = temp->function( temp->args);
+	temp->blocked = 1;
 	temp->complete = 1;
 	temp->active = 0;
 	threadYield();
@@ -118,10 +119,12 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	temp->complete = 0;
 	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
 
-	list_insert_end( threadQueue, temp);
+	list_insert_after( running, temp);
 
 	nthreads++;
 	
+	threadYield();
+
 /*	We want the parent thread to know the id of the thread it created,
  *		so we pass it back through the pthread_t* thread argument
  */
@@ -130,7 +133,6 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	interruptEnable();
 
 	return id_val;
-
 }
 
 /*
@@ -168,13 +170,13 @@ extern void threadJoin( int thread_id, void **result) {
  */
 extern void threadYield(void) {
 
-	interruptDisable();
+	list_node* old_top_node = list_remove(&running, running);
+	T* old_top_tcb = (T*) old_top_node->data;
 	
 	//if in a thread switch to main	
 	
 	//if in main switch to a thread
 
-	interruptEnable();
 
 }
 
@@ -195,8 +197,8 @@ extern void threadExit( void *result) {
 /*
  * grab the thread id from the Thread struct and return it
  */
-T Thread_self(void) {
-	return running;
+void Thread_self(void) {
+//	return running;
 }
 
 /*
