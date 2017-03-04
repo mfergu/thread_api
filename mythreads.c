@@ -25,11 +25,11 @@ typedef struct T {
 	void* results;
 	size_t id;
 	int active;
-	int alerted;
+	int blocked;
 	int complete;
 }T;
 
-static list_node* threadQueue;
+static list_node* front, * current;
 static int nthreads;	/* number of active threads */
 
 static T* join;
@@ -57,7 +57,7 @@ void threadInit(void) {
 	assert(getcontext(&main->context) != -1);
 	main->id = 1;	
 	main->active = 1;
-	main->alerted = 0;
+	main->blocked = 0;
 	main->complete = 0;
 	nthreads = 1;
 
@@ -104,8 +104,18 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 }
 
+/*
+ * void** where we can pass back what the user thread exited with
+ *
+ * When a thread joins on another thread we don’t want it to start executing it
+ *	 until the thread it joined on has finished
+ *
+ *
 extern void threadJoin( int thread_id, void **result) {
 
+	interruptDisable();
+	
+	list_node temp = ;
 }
 
 extern void threadYield(void) {
