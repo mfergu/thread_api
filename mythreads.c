@@ -25,8 +25,8 @@ typedef struct T {
 	void* results;
 	size_t id;
 	int active;
-	int blocked;
-	int complete;
+	int blocked;	/* don't start executing until the thread it joined has */
+	int complete;   /*		finished executing */
 }T;
 
 static list_node* front, * current;
@@ -76,6 +76,18 @@ static void run(T* temp) {
 	threadYield();
 }	
 
+/*  malloc the thread struct
+ *  set the context to a wrapper function 
+ *  which will pass the arguments into the start routine
+ *  Then we push this onto the TCB
+ *  If this is the first time a thread is being created
+ *		we want to initialize the library
+ *		which also means assigning the parent thread as a running thread
+ *	We want the parent thread to know the id of the thread it created,
+ *		so we pass it back through the pthread_t* thread argument
+ *	if all of the above is successful
+ *		return 0 otherwise we want to return a nonzero value
+ */
 extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptDisable();
@@ -90,6 +102,12 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	temp->context.uc_stack.ss_flags = 0;
 	// don't use uc_link in project 2
 	
+	/*
+	if(nthreads == 0) {
+		threadInit();
+	}	
+	*/
+
 	temp->function =  funcPtr;
 	temp->args = argPtr;
 	temp->id = (size_t) gettid();
@@ -105,12 +123,23 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 }
 
 /*
- * void** where we can pass back what the user thread exited with
- *
- * When a thread joins on another thread we don’t want it to start executing it
- *	 until the thread it joined on has finished
- *
- *
+ * threadjoin wait until it has finished executing before continuing
+ *  It should pass a void** where we can pass back
+ *		 what the user thread exited with
+ *	When a thread joins on another thread 
+ *		we don’t want it to start executing it until the thread it joined on
+ *			has finished executing
+ *		when a thread blocks
+ *			change the status to waiting
+ *	add some checks to avoid deadlocks 
+ *	if a join happens
+ *		we always have at least one thread to execute
+ *		and that the thread being joined on exists
+ *		and is in the waiting state (or running)
+ *	add a little clean up code that gets called by our wrapper function
+ *		to ensure we change the status of the joined threads
+ *	
+ */	
 extern void threadJoin( int thread_id, void **result) {
 
 	interruptDisable();
