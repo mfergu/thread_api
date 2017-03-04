@@ -157,7 +157,8 @@ extern void threadJoin( int thread_id, void **result) {
 
 	interruptDisable();
 	
-	list_node temp = ;
+	//list_node temp = ;
+	interruptEnable();
 }
 
 /*

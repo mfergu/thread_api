@@ -13,7 +13,7 @@ void list_destroy(list_node **list);
 list_node* list_insert_after(list_node *node, void *data);
 list_node* list_insert_beginning(list_node *list, void *data);
 list_node* list_insert_end(list_node *list, void *data);
-void list_remove(list_node **list, list_node *node);
+list_node* list_remove(list_node **list, list_node *node);
 void list_remove_by_data(list_node **list, void *data);
 list_node* list_find_node(list_node *list, list_node *node);
 list_node* list_find_by_data(list_node *list, void *data);

@@ -74,22 +74,25 @@ list_node* list_insert_end(list_node *list, void *data)
 /* Removes a node from the list
  * Arguments: The list and the node that will be removed
  */
-void list_remove(list_node **list, list_node *node)
+list_node* list_remove(list_node **list, list_node *node)
 {
 	list_node *tmp = NULL;
-	if (list == NULL || *list == NULL || node == NULL) return;
+	list_node* return_me = NULL;
+	if (list == NULL || *list == NULL || node == NULL) return NULL;
 
 	if (*list == node) {
 		*list = (*list)->next;
+		return_me = node;
 		free(node);
-		node = NULL;
+		//node = NULL;
 	} else {
 		tmp = *list;
 		while (tmp->next && tmp->next != node) tmp = tmp->next;
 		if (tmp->next) {
 			tmp->next = node->next;
-			free(node);
-			node = NULL;
+			return_me = node;
+			//free(node);
+			//node = NULL;
 		}
 	}
 }
