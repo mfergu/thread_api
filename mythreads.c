@@ -1,9 +1,12 @@
+#include "queue.h"
 #include "mythreads.h"
 #include "list.h"
+#include "thread.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <ucontext.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
@@ -18,24 +21,9 @@ int locks[NUM_LOCKS];
 int conditions[NUM_LOCKS][CONDITIONS_PER_LOCK];
 
 #define T thread_t
-typedef struct T {
-	ucontext_t context;	/* tcb vars */
-	thFuncPtr function;
-	void* args;
-	void* results;
-	size_t id;
-	int active;
-	int blocked;	/* don't start executing until the thread it joined has */
-	int complete;   /*		finished executing */
-}T;
 
-static list_node* front, * running;
-static int nthreads;	/* number of active threads */
-
-static T* join;
-static T freelist;
-static int critical;
-static T* ready = NULL;
+ThreadQueue_t* queue;
+static int in_thread;
 
 /* from header and is extern */
 static void interruptDisable() {
@@ -52,35 +40,62 @@ static void interruptEnable() {
 void threadInit(void) {
 /*  If this is the first time a thread is being created
  *		we want to initialize the library
- *		which also means assigning the parent thread as a running thread
+ *		which also means assigning the parent thread as a current thread
  */
 
-	T* main = (T*) malloc(sizeof(T));
-	assert( main != NULL);
+	queue = malloc( sizeof(ThreadQueue_t));
+	assert( queue != NULL);
 
-	assert(getcontext(&main->context) != -1);
-	main->id = 1;	
-	main->active = 1;
-	main->blocked = 0;
-	main->complete = 0;
-	nthreads = 1;
+	T* main_data = (T*) malloc(sizeof(T));
+	assert( main_data != NULL);
 
-	running = list_create(main);
-	assert( running != NULL);
-	front = running;
+	assert(getcontext(&main_data->context) != -1);
+	main_data->id = 1;	
+	main_data->state = running;
+	queue->nthreads = 1;
+
+	queue->main = list_create(main_data);
+	queue->head = queue->current = queue->main;
+	assert( queue->main != NULL);
 }
 
 static void run(T* temp) {
 
+	assert( temp != NULL);
 	//needs review for yielding and variable semantics
-	temp->active = 1;
-	temp->blocked = 0;
+	temp->state = running;
 	temp->results = temp->function( temp->args);
-	temp->blocked = 1;
-	temp->complete = 1;
-	temp->active = 0;
+	temp->state = dead;
+	--queue->nthreads;
 	threadYield();
 }	
+
+T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
+
+ //  malloc the thread struct
+	T* temp =(T*) malloc(sizeof(T));
+	assert( temp != NULL);
+	
+ //  set the context to a wrapper function 
+ //  which will pass the arguments into the start routine
+	assert( getcontext( &temp->context) != -1);	
+
+ //  Then we push this into the TCB
+	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
+	assert(temp->context.uc_stack.ss_sp != NULL); 
+	temp->context.uc_stack.ss_size = STACK_SIZE;
+	temp->context.uc_stack.ss_flags = 0;
+	// don't use uc_link in project 2
+
+	temp->function =  funcPtr;
+	temp->args = argPtr;
+	temp->id = (size_t) gettid();
+	temp->state = running ;
+	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
+
+	return temp;
+
+}
 
 /* descrepancy for threadCreate return
  *   needs to return thread id to parent 
@@ -92,51 +107,30 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptDisable();
 
- //  malloc the thread struct
-	T* temp =(T*) malloc(sizeof(T));
-	assert( temp != NULL);
+	T* new_thread = create_tcb(funcPtr, argPtr);
+	assert( list_insert_after( queue->current, new_thread) != NULL);
 
- //  set the context to a wrapper function 
- //  which will pass the arguments into the start routine
-	assert( getcontext( &temp->context) != -1);	
-
- //  Then we push this onto the TCB
-	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
-	assert(temp->context.uc_stack.ss_sp != NULL); 
-	temp->context.uc_stack.ss_size = STACK_SIZE;
-	temp->context.uc_stack.ss_flags = 0;
-	// don't use uc_link in project 2
-	
-	/*
-	if(nthreads == 0) {
-		threadInit();
-	}	
-	*/
-
-	temp->function =  funcPtr;
-	temp->args = argPtr;
-	temp->id = (size_t) gettid();
-	temp->complete = 0;
-	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
-
-	list_insert_after( running, temp);
-
-	nthreads++;
-	
+	queue->nthreads++;
 	threadYield();
 
 /*	We want the parent thread to know the id of the thread it created,
  *		so we pass it back through the pthread_t* thread argument
  */
-	size_t id_val = temp->id;
+	size_t id_val = new_thread->id;
 
 	interruptEnable();
 
 	return id_val;
 }
 
+void set_my_state( list_node* temp, State_t my_state) {
+
+	temp->data->state = my_state;
+}
+
 /*
- * threadjoin wait until it has finished executing before continuing
+ * threadjoin
+ * wait until it has finished executing before continuing
  *  It should pass a void** where we can pass back
  *		 what the user thread exited with
  *	When a thread joins on another thread 
@@ -148,7 +142,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
  *	if a join happens
  *		we always have at least one thread to execute
  *		and that the thread being joined on exists
- *		and is in the waiting state (or running)
+ *		and is in the waiting state (or current)
  *	add a little clean up code that gets called by our wrapper function
  *		to ensure we change the status of the joined threads
  *	
@@ -156,8 +150,20 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 extern void threadJoin( int thread_id, void **result) {
 
 	interruptDisable();
+
+	list_node* temp = queue->head;
+	while( temp->data->id != thread_id) {
+		temp = temp->next;
+	}
+
+	while( temp->data->state != dead) {
+		
+		set_my_state( node_self(queue), blocked);
+		threadYield();
+	} 
 	
-	//list_node temp = ;
+	*result = temp->data->results;
+
 	interruptEnable();
 }
 
@@ -165,20 +171,21 @@ extern void threadJoin( int thread_id, void **result) {
  * When a thread joins
  *		it needs to give up the CPU for the other threads
  *	 yield function just needs to
- *	 push the running thread back into the linked list
+ *	 push the current thread back into the linked list
  *	 then get the next runnable thread
  *		and perform a context switch
  */
 extern void threadYield(void) {
 
-	list_node* old_top_node = list_remove(&running, running);
-	T* old_top_tcb = (T*) old_top_node->data;
-	
-	//if in a thread switch to main	
-	
-	//if in main switch to a thread
+	list_node* temp = queue->current;
 
-
+	do {
+		increment_queue( queue);
+	
+	} while ( queue->current->data->state == dead ); 
+	
+	swapcontext( &temp->data->context, &queue->current->data->context);
+	
 }
 
 
@@ -192,153 +199,53 @@ extern void threadYield(void) {
  */
 extern void threadExit( void *result) {
 
-	
+	interruptDisable();
+
+	queue->current->data->results = result;
+	queue->current->data->state = dead;
+
+	list_node* temp = queue->current;
+
+	increment_queue( queue);
+		
+	list_remove(&queue->main, temp);
+
+	threadYield();
+
+	interruptEnable();
 }
 
-/*
- * grab the thread id from the Thread struct and return it
- */
-void Thread_self(void) {
-//	return running;
+
+
+extern void threadLock(int lockNum) {
+
 }
 
-/*
-static void testalert(void) {
-	if(current->alerted) {
-		current->alerted = 0;
-		RAISE(Thread_Alerted);
-	}
-}
-*/
+extern void threadUnlock( int lockNum) {
 
-/*
-static void release(void) {
-	T thread;
-	do {
-		critical++;
-		while( (thread = freelist) != NULL) {
-			freelist = thread->next;
-			FREE(thread);
-		}
-		critical--;
-	} while(0);
-}
-*/
-
-/*
-static int interrupt( int sig, struct sigcontext sc) {
-	if( critical || sc.rip >= (unsigned long)_MONITOR &&
-		sc.rip <= (unsigned long)_ENDMONITOR) {
-		return 0;
-	}
-
-	put(current, &ready);
-	do{
-		critical++;
-		sigsetmask(sc.oldmask);
-		critical--;
-	} while(0);
-	run();
-	return 0;
-}
-*/
-
-/*
-int ThreadInit(void) {
-	assert( preempt == 1 || preempt == 0);
-	assert( current == NULL);	
-	root.handle = &root;
-	current = &root;
-	nthreads = 1;
-	if( preempt) {
-		{
-			struct sigaction sa;
-			memset( &sa, '\0', sizeof(sa));
-			sa.sa_handler = (void(*))interrupt;
-			if( sigaction(SIGVTALRM, &sa, NULL) < 0) {
-				return 0;
-			}
-		}
-		{
-			struct itimerval it;
-			it.it_value.tv_sec = 0;
-			it.it_value.tv_usec = 10;
-			it.it_interval.tv_sec = 0;
-			it.it_interval.tv_usec = 10;
-			if( setitimer(ITIMER_VIRTUAL, &it, NULL) < 0) {
-				return 0;
-			}
-		}
-	}
-	return 1;
-}	
-*/
-
-/*
-*/
-
-/*
-void ThreadYield(void) {
-	assert(current);
-	put(current, &ready);
-	run();
-}
-*/
-
-/*
-int ThreadJoin( T thread) {
-	assert( current && thread != current);
-	testalert();
-	if( thread) {
-		if( thread->handle == thread) {
-			put( current, &thread->join);
-			run();
-			testalert();
-			return current->code;
-		}
-		else {
-			return -1;
-		}
-	}
-	else {
-		assert( isempty(join));
-		if( nthreads > 1) {
-			put( current, &join);
-			run();
-			testalert();
-		}
-		return 0;
-	}
-}
-*/
-
-/*
-void ThreadExit( int code) {
-	assert( current);
-	release();
-	if( current != &root) {
-		current->next = freelist;
-		freelist = current;
-	}
-	current->handle = NULL;
-	while( !isempty( current->join)) {
-		T thread = get( &current->join);
-		thread->code = code;
-		put( thread, &ready);
-	}
-	if( !isempty( join) && nthreads == 2) {
-		assert( isempty(ready));
-		put( get( &join), &ready);
-	}
-	if( --nthreads == 0) {
-		exit( code);
-	}
-	else {
-		run();
-	}	
 }
 
-*/
+extern void threadWait( int lockNum, int conditionNum) {
+
+}
+
+extern void threadSignal( int lockNum, int conditionNum) {
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

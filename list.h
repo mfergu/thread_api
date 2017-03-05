@@ -1,9 +1,13 @@
 /* list pulled from https://github.com/dxtr/list */
+/*
 #ifndef _LIST_H
 #define _LIST_H
+*/
+#pragma once
+#include "thread.h"
 
 typedef struct list_node {
-	void *data;
+	thread_t *data;
 	struct list_node *next;
 } list_node;
 
@@ -19,5 +23,7 @@ list_node* list_find_node(list_node *list, list_node *node);
 list_node* list_find_by_data(list_node *list, void *data);
 list_node* list_find(list_node *list, int(*func)(list_node*,void*), void *data);
 
+/*
 #endif
+*/
 
