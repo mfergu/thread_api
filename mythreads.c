@@ -14,10 +14,6 @@
 #include <assert.h>
 #include <sys/time.h>
 
-#ifndef gettid
-#define gettid() syscall(SYS_gettid)
-#endif
-
 lock_t** locks;
 ThreadQueue_t* queue;
 static unsigned long long id_maker;
