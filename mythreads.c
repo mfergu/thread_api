@@ -96,25 +96,18 @@ T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
 
 }
 
-/* descrepancy for threadCreate return
- *   needs to return thread id to parent 
- *   also needs to 
- *	if all of the above is successful
- *		return 0 otherwise we want to return a nonzero value
- */
 extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptDisable();
 
 	T* new_thread = create_tcb(funcPtr, argPtr);
-	assert( list_insert_after( queue->current, new_thread) != NULL);
+
+	list_insert_after( queue->current, new_thread);
+	assert(queue->current->next != NULL);
 
 	++queue->nthreads;
 	threadYield();
 
-/*	We want the parent thread to know the id of the thread it created,
- *		so we pass it back through the pthread_t* thread argument
- */
 	size_t id_val = new_thread->id;
 
 	interruptEnable();
@@ -249,9 +242,15 @@ extern void threadWait( int lockNum, int conditionNum) {
 
 	interruptDisable();
 
-	++threadwait_t;
+	if( !threadwait_t) {
+		++threadwait_t;
+	}
+
 	threadUnlock(lockNum);
-	--threadwait_t;
+
+	if(threadwait_t) {
+		--threadwait_t;
+	}
 
 	while( !locks[lockNum]->conditions[conditionNum]) {
 		set_my_state( node_self(queue), blocked);
@@ -269,7 +268,10 @@ extern void threadSignal( int lockNum, int conditionNum) {
 
 	interruptDisable();
 
-	++locks[lockNum]->conditions[conditionNum];
+	if( !locks[lockNum]->conditions[conditionNum]) {
+
+		++locks[lockNum]->conditions[conditionNum];
+	}
 
 	interruptEnable();
 }
