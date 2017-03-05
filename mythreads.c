@@ -30,7 +30,7 @@ static void interruptEnable() {
 
 #define T thread_t
 
-void threadInit(void) {
+void threadInit() {
 /*  If this is the first time a thread is being created
  *		we want to initialize the library
  *		which also means assigning the parent thread as a current thread
@@ -96,7 +96,7 @@ T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
 
 }
 
-extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
+int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	interruptDisable();
 
@@ -139,7 +139,7 @@ void set_my_state( list_node* temp, State_t my_state) {
  *		to ensure we change the status of the joined threads
  *	
  */	
-extern void threadJoin( int thread_id, void **result) {
+void threadJoin( int thread_id, void **result) {
 
 	interruptDisable();
 
@@ -167,7 +167,7 @@ extern void threadJoin( int thread_id, void **result) {
  *	 then get the next runnable thread
  *		and perform a context switch
  */
-extern void threadYield(void) {
+void threadYield() {
 
 	list_node* temp = queue->current;
 
@@ -189,14 +189,14 @@ extern void threadYield(void) {
  *		to pass information back to the thread that joined on it
  *	then perform a cleanup routine on joined threads	 
  */
-extern void threadExit( void *result) {
+void threadExit( void *result) {
 
 	interruptDisable();
 
 	queue->current->data->results = result;
 	queue->current->data->state = dead;
 
-	list_node* temp = queue->current;
+	//list_node* temp = queue->current;
 
 	increment_queue( queue);
 		
@@ -209,7 +209,7 @@ extern void threadExit( void *result) {
 
 
 
-extern void threadLock(int lockNum) {
+void threadLock(int lockNum) {
 
 	assert(lockNum < NUM_LOCKS);
 
@@ -224,7 +224,7 @@ extern void threadLock(int lockNum) {
 
  static int threadwait_t = 0;
 
-extern void threadUnlock( int lockNum) {
+void threadUnlock( int lockNum) {
 
 	assert(lockNum < NUM_LOCKS);
 
@@ -235,7 +235,7 @@ extern void threadUnlock( int lockNum) {
 	
 }
 
-extern void threadWait( int lockNum, int conditionNum) {
+void threadWait( int lockNum, int conditionNum) {
 
 	assert(lockNum < NUM_LOCKS);
 	assert(conditionNum < CONDITIONS_PER_LOCK);
@@ -261,7 +261,7 @@ extern void threadWait( int lockNum, int conditionNum) {
 	
 }
 
-extern void threadSignal( int lockNum, int conditionNum) {
+void threadSignal( int lockNum, int conditionNum) {
 
 	assert(lockNum < NUM_LOCKS);
 	assert(conditionNum < CONDITIONS_PER_LOCK);
