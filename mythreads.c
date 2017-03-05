@@ -2,6 +2,7 @@
 #include "mythreads.h"
 #include "list.h"
 #include "thread.h"
+#include "lock.h"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
@@ -17,34 +18,34 @@
 #define gettid() syscall(SYS_gettid)
 #endif
 
-int locks[NUM_LOCKS];
-int conditions[NUM_LOCKS][CONDITIONS_PER_LOCK];
-
-#define T thread_t
-
+lock_t** locks;
 ThreadQueue_t* queue;
-static int in_thread;
+static unsigned long long id_maker;
 
-/* from header and is extern */
 static void interruptDisable() {
 	assert(!interruptsAreDisabled);
 	interruptsAreDisabled = 1;
 }
 
-/* from header and is extern */
 static void interruptEnable() {
 	assert(interruptsAreDisabled);
 	interruptsAreDisabled = 0;
 }
+
+#define T thread_t
 
 void threadInit(void) {
 /*  If this is the first time a thread is being created
  *		we want to initialize the library
  *		which also means assigning the parent thread as a current thread
  */
-
+	locks = malloc( NUM_LOCKS * sizeof(lock_t));
+	assert( locks != NULL);
+	
 	queue = malloc( sizeof(ThreadQueue_t));
 	assert( queue != NULL);
+
+	id_maker = 1;
 
 	T* main_data = (T*) malloc(sizeof(T));
 	assert( main_data != NULL);
@@ -89,7 +90,9 @@ T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
 
 	temp->function =  funcPtr;
 	temp->args = argPtr;
-	temp->id = (size_t) gettid();
+	temp->id = ++id_maker;
+	
+	
 	temp->state = running ;
 	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
 
@@ -110,7 +113,7 @@ extern int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 	T* new_thread = create_tcb(funcPtr, argPtr);
 	assert( list_insert_after( queue->current, new_thread) != NULL);
 
-	queue->nthreads++;
+	++queue->nthreads;
 	threadYield();
 
 /*	We want the parent thread to know the id of the thread it created,
@@ -208,7 +211,7 @@ extern void threadExit( void *result) {
 
 	increment_queue( queue);
 		
-	list_remove(&queue->main, temp);
+//	list_remove(&queue->main, temp);
 
 	threadYield();
 
@@ -219,18 +222,60 @@ extern void threadExit( void *result) {
 
 extern void threadLock(int lockNum) {
 
+	assert(lockNum < NUM_LOCKS);
+
+	while( locks[lockNum]->status == locked) {
+	
+		set_my_state( node_self(queue), blocked);
+		threadYield();
+	}
+	locks[lockNum]->status = locked;
+	locks[lockNum]->thread_id = node_self(queue)->data->id;	
 }
+
+ static int threadwait_t = 0;
 
 extern void threadUnlock( int lockNum) {
 
+	assert(lockNum < NUM_LOCKS);
+
+	if( node_self(queue)->data->id == locks[lockNum]->thread_id || threadwait_t) {
+
+		locks[lockNum]->status = unlocked;
+	}
+	
 }
 
 extern void threadWait( int lockNum, int conditionNum) {
 
+	assert(lockNum < NUM_LOCKS);
+	assert(conditionNum < CONDITIONS_PER_LOCK);
+
+	interruptDisable();
+
+	++threadwait_t;
+	threadUnlock(lockNum);
+	--threadwait_t;
+
+	while( !locks[lockNum]->conditions[conditionNum]) {
+		set_my_state( node_self(queue), blocked);
+		threadYield();
+	}	
+
+	interruptEnable();
+	
 }
 
 extern void threadSignal( int lockNum, int conditionNum) {
 
+	assert(lockNum < NUM_LOCKS);
+	assert(conditionNum < CONDITIONS_PER_LOCK);
+
+	interruptDisable();
+
+	++locks[lockNum]->conditions[conditionNum];
+
+	interruptEnable();
 }
 
 
