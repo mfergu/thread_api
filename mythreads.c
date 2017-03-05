@@ -46,7 +46,7 @@ void threadInit() {
 	T* main_data = (T*) malloc(sizeof(T));
 	assert( main_data != NULL);
 
-	assert(getcontext(&main_data->context) != -1);
+	getcontext(&main_data->context);
 	main_data->id = 1;	
 	main_data->state = running;
 	queue->nthreads = 1;
@@ -59,12 +59,19 @@ void threadInit() {
 static void run(T* temp) {
 
 	assert( temp != NULL);
-	//needs review for yielding and variable semantics
 	temp->state = running;
+
+	//interruptEnable();
+
 	temp->results = temp->function( temp->args);
+
+	//interruptDisable();
+
 	temp->state = dead;
 	--queue->nthreads;
+
 	threadYield();
+
 }	
 
 T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
@@ -75,7 +82,7 @@ T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
 	
  //  set the context to a wrapper function 
  //  which will pass the arguments into the start routine
-	assert( getcontext( &temp->context) != -1);	
+	getcontext( &temp->context);
 
  //  Then we push this into the TCB
 	temp->context.uc_stack.ss_sp = malloc(STACK_SIZE);
@@ -89,7 +96,7 @@ T* create_tcb( thFuncPtr funcPtr, void* argPtr) {
 	temp->id = ++id_maker;
 	
 	
-	temp->state = running ;
+	temp->state = running;
 	makecontext( &temp->context, (void (*)(void)) run, 1, temp); 
 
 	return temp;
@@ -200,7 +207,7 @@ void threadExit( void *result) {
 
 	increment_queue( queue);
 		
-//	list_remove(&queue->main, temp);
+	//list_remove(&queue->main, temp);
 
 	threadYield();
 
@@ -221,6 +228,7 @@ void threadLock(int lockNum) {
 	locks[lockNum]->status = locked;
 	locks[lockNum]->thread_id = node_self(queue)->data->id;	
 }
+
 
  static int threadwait_t = 0;
 
