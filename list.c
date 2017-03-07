@@ -95,6 +95,7 @@ list_node* list_remove(list_node **list, list_node *node)
 			//node = NULL;
 		}
 	}
+	return return_me;
 }
 
 /* Removes an element from a list by comparing the data pointers

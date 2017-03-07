@@ -6,9 +6,8 @@
 #include "mythreads.h"
 
 #define BIG 1000
-#define TIMER_INTERVAL_US 10
+#define TIMER_INTERVAL_US 50
 
-int interruptsAreDisabled = 0;
 //this function will be called
 //everytime that the timer fires
 //...then I call yield.
@@ -67,7 +66,7 @@ void *t1 (void *arg)
 
 	printf ("finished with math! (%d)\n",*result);
 
-	sleep(1);
+	sleep(2);
 	printf("t1: done result=%d\n",*result);
 	return result;
 }
@@ -76,14 +75,18 @@ void *t1 (void *arg)
 
 int main(void)
 {
-	int id1, id2;
+	int id1, id2, id3, id4;
 	int p1;
 	int p2;
+	int p3;
+	int p4;
 
 	p1 = 23;
 	p2 = 2;
+	p3 = 34;
+	p4 = 3;
 
-	int *result1, *result2;
+	int *result1, *result2, *result3, *result4;
 
 	//initialize the threading library. DON'T call this more than once!!!
 	threadInit();
@@ -97,12 +100,22 @@ int main(void)
 	id2 = threadCreate(t1,(void*)&p2);
 	printf("created thread 2.\n");
 
+	id3 = threadCreate(t1,(void*)&p3);
+	printf("created thread 3.\n");
 
+	id4 = threadCreate(t1,(void*)&p4);
+	printf("created thread 4.\n");
 
 	threadJoin(id1, (void*)&result1);
 	printf("joined #1 --> %d.\n",*result1);
 
 	threadJoin(id2, (void*)&result2);
 	printf("joined #2 --> %d.\n",*result2);
+
+	threadJoin(id3, (void*)&result3);
+	printf("joined #3 --> %d.\n",*result3);
+
+	threadJoin(id4, (void*)&result4);
+	printf("joined #4 --> %d.\n",*result4);
 
 }

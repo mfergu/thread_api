@@ -1,5 +1,6 @@
 #!/bin/bash
 make clean
+rm main
 clear
 make &> compile_out.txt
 sleep 1

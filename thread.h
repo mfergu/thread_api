@@ -21,5 +21,6 @@ typedef struct thread_t {
     void* results;                                                                                            
     size_t id;                                                                                                
 	State_t state;
+	int waiting_on;
 }thread_t;          
 

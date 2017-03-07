@@ -15,8 +15,10 @@
 #include <sys/time.h>
 
 lock_t** locks;
-ThreadQueue_t* queue;
+ThreadQueue_t* AllQueue, *WaitQueue;
+
 static unsigned long long id_maker;
+int interruptsAreDisabled = 0;
 
 static void interruptDisable() {
 	assert(!interruptsAreDisabled);
@@ -38,8 +40,8 @@ void threadInit() {
 	locks = malloc( NUM_LOCKS * sizeof(lock_t));
 	assert( locks != NULL);
 	
-	queue = malloc( sizeof(ThreadQueue_t));
-	assert( queue != NULL);
+	AllQueue = malloc( sizeof(ThreadQueue_t*));
+	assert( AllQueue != NULL);
 
 	id_maker = 1;
 
@@ -49,11 +51,11 @@ void threadInit() {
 	getcontext(&main_data->context);
 	main_data->id = 1;	
 	main_data->state = running;
-	queue->nthreads = 1;
+	AllQueue->nthreads = 1;
 
-	queue->main = list_create(main_data);
-	queue->head = queue->current = queue->main;
-	assert( queue->main != NULL);
+	AllQueue->main = list_create(main_data);
+	AllQueue->head = AllQueue->current = AllQueue->main;
+	assert( AllQueue->main != NULL);
 }
 
 static void run(T* temp) {
@@ -61,14 +63,14 @@ static void run(T* temp) {
 	assert( temp != NULL);
 	temp->state = running;
 
-	//interruptEnable();
+	interruptEnable();
 
 	temp->results = temp->function( temp->args);
 
-	//interruptDisable();
+	interruptDisable();
 
 	temp->state = dead;
-	--queue->nthreads;
+	--AllQueue->nthreads;
 
 	threadYield();
 
@@ -109,10 +111,10 @@ int threadCreate( thFuncPtr funcPtr, void* argPtr) {
 
 	T* new_thread = create_tcb(funcPtr, argPtr);
 
-	list_insert_after( queue->current, new_thread);
-	assert(queue->current->next != NULL);
+	list_insert_after( AllQueue->current, new_thread);
+	assert(AllQueue->current->next != NULL);
 
-	++queue->nthreads;
+	++AllQueue->nthreads;
 	threadYield();
 
 	size_t id_val = new_thread->id;
@@ -126,6 +128,7 @@ void set_my_state( list_node* temp, State_t my_state) {
 
 	temp->data->state = my_state;
 }
+
 
 /*
  * threadjoin
@@ -150,18 +153,36 @@ void threadJoin( int thread_id, void **result) {
 
 	interruptDisable();
 
-	list_node* temp = queue->head;
+	//current thread is waiting on thread_id to exit
+	AllQueue->current->data->waiting_on = thread_id;
+	
+	//if wait queue not ready
+	if( WaitQueue == NULL) {
+		WaitQueue = malloc(sizeof(ThreadQueue_t*));
+		assert(WaitQueue != NULL);
+		//add current thread to wait queue
+		WaitQueue->main = list_create(AllQueue->current->data);
+		assert(WaitQueue->main != NULL);
+		WaitQueue->current = WaitQueue->head = WaitQueue->main;
+	}
+	
+	//add current thread to wait queue
+	list_insert_end( WaitQueue->head, AllQueue->current->data); 
+
+	list_node* temp = AllQueue->head;
 	while( temp->data->id != thread_id) {
 		temp = temp->next;
 	}
 
 	while( temp->data->state != dead) {
 		
-		set_my_state( node_self(queue), blocked);
+		set_my_state( node_self(AllQueue), blocked);
 		threadYield();
 	} 
 	
-	*result = temp->data->results;
+	if( result) {
+		*result = temp->data->results;
+	}
 
 	interruptEnable();
 }
@@ -176,15 +197,24 @@ void threadJoin( int thread_id, void **result) {
  */
 void threadYield() {
 
-	list_node* temp = queue->current;
+	list_node* temp = AllQueue->current;
 
 	do {
-		increment_queue( queue);
+		increment_queue( AllQueue);
 	
-	} while ( queue->current->data->state == dead ); 
+	} while ( AllQueue->current->data->state == dead ); 
 	
-	swapcontext( &temp->data->context, &queue->current->data->context);
+	swapcontext( &temp->data->context, &AllQueue->current->data->context);
 	
+}
+
+int thread_is_waiting( int completed_thread) {
+		
+	list_node* temp = WaitQueue->main;
+	while(temp->data->waiting_on != completed_thread || temp->next != NULL) {
+		temp = temp->next;
+	}
+	return temp->data->waiting_on == completed_thread? 1 : 0;
 }
 
 
@@ -200,14 +230,18 @@ void threadExit( void *result) {
 
 	interruptDisable();
 
-	queue->current->data->results = result;
-	queue->current->data->state = dead;
+	if(result) {
+		AllQueue->current->data->results = result;
+	}
+	AllQueue->current->data->state = dead;
 
-	//list_node* temp = queue->current;
+	//if the waiting queue has a thread waiting on the current exit thread
+	//if(thread_is_waiting)
+	//list_node* temp = AllQueue->current;
 
-	increment_queue( queue);
+	increment_queue( AllQueue);
 		
-	//list_remove(&queue->main, temp);
+	//list_remove(&AllQueue->main, temp);
 
 	threadYield();
 
@@ -222,11 +256,11 @@ void threadLock(int lockNum) {
 
 	while( locks[lockNum]->status == locked) {
 	
-		set_my_state( node_self(queue), blocked);
+		set_my_state( node_self(AllQueue), blocked);
 		threadYield();
 	}
 	locks[lockNum]->status = locked;
-	locks[lockNum]->thread_id = node_self(queue)->data->id;	
+	locks[lockNum]->thread_id = node_self(AllQueue)->data->id;	
 }
 
 
@@ -236,7 +270,7 @@ void threadUnlock( int lockNum) {
 
 	assert(lockNum < NUM_LOCKS);
 
-	if( node_self(queue)->data->id == locks[lockNum]->thread_id || threadwait_t) {
+	if( node_self(AllQueue)->data->id == locks[lockNum]->thread_id || threadwait_t) {
 
 		locks[lockNum]->status = unlocked;
 	}
@@ -261,7 +295,7 @@ void threadWait( int lockNum, int conditionNum) {
 	}
 
 	while( !locks[lockNum]->conditions[conditionNum]) {
-		set_my_state( node_self(queue), blocked);
+		set_my_state( node_self(AllQueue), blocked);
 		threadYield();
 	}	
 

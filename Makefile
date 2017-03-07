@@ -1,7 +1,7 @@
 
 CC=clang
-#CFLAGS=-Wall -g -DNDEBUG -O3
-CFLAGS=-Wall -g -O3
+CFLAGS=-Wall -g -DNDEBUG -O3
+#CFLAGS=-Wall -g -O3
 
 BINS=libmythreads.a 
 
